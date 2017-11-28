@@ -98,16 +98,18 @@ void sr_handlepacket(struct sr_instance* sr,
   		sr_arp_hdr_t * arpHdr = get_arp_hdr(packet);
 
   		// check the arp op code to see whether reply or request
-  		if(arpHdr->ar_op == arp_op_request) 
+  		if(ntohs(arpHdr->ar_op) == arp_op_request) 
   		{
+			printf("request\n");
   			sr_handle_arp_request(sr, arpHdr, rec_router_interface);
   		}
-  		else if(arpHdr->ar_op == arp_op_reply) 
+  		else if(ntohs(arpHdr->ar_op) == arp_op_reply) 
   		{
   			sr_handle_arp_reply(sr, arpHdr, rec_router_interface);
   		}
   		else 
   		{
+			printf("nothing\n");
   			// since no request or reply
   			return;
   		}
@@ -309,7 +311,7 @@ void sr_handle_arp_request(struct sr_instance * sr, sr_arp_hdr_t * arpHdr,
     arpHdrR->ar_hln = arpHdr->ar_hln;           
     arpHdrR->ar_pln = arpHdr->ar_pln;  
     // TODO: check here           
-    arpHdrR->ar_op = arp_op_reply;   
+    arpHdrR->ar_op = htons(arp_op_reply);   
     // set the source ip to the current interface ip       
     arpHdrR->ar_sip = rec_router_interface->ip;  
     // set the destination ip to the previous source ip
@@ -319,7 +321,7 @@ void sr_handle_arp_request(struct sr_instance * sr, sr_arp_hdr_t * arpHdr,
     memcpy(arpHdrR->ar_tha, arpHdr->ar_sha, ETHER_ADDR_LEN);                   
   	
   	// set the ethernet hdr
-    ethernetHdr->ether_type = ethertype_arp;
+    ethernetHdr->ether_type = ntohs(ethertype_arp);
     memcpy(ethernetHdr->ether_dhost, 
     	ethernetHdr->ether_shost, ETHER_ADDR_LEN); 
     memcpy(ethernetHdr->ether_shost, 
@@ -343,12 +345,12 @@ void send_arp_request(struct sr_instance * sr, struct sr_arpreq * req)
 
   	// set the arp hdr
   	uint8_t ip_length = 4;
-  	arpHdr->ar_hrd = arp_hrd_ethernet; 
-    arpHdr->ar_pro = ethertype_ip;            
+  	arpHdr->ar_hrd = htons(arp_hrd_ethernet); 
+    arpHdr->ar_pro = htons(ethertype_ip);            
     arpHdr->ar_hln = ETHER_ADDR_LEN;           
     arpHdr->ar_pln = ip_length;  
     // TODO: check here           
-    arpHdr->ar_op = arp_op_request;   
+    arpHdr->ar_op = htons(arp_op_request);   
     // set the source ip to the current interface ip       
     arpHdr->ar_sip = send_router_interface->ip;  
     // set the destination ip to the previous source ip
@@ -359,7 +361,7 @@ void send_arp_request(struct sr_instance * sr, struct sr_arpreq * req)
     memset(arpHdr->ar_tha, 0xFF, ETHER_ADDR_LEN);                   
 
   	// set the ethernet hdr
-    ethernetHdr->ether_type = ethertype_arp;
+    ethernetHdr->ether_type = htons(ethertype_arp);
     memset(ethernetHdr->ether_dhost, 
     	0xFF, ETHER_ADDR_LEN); 
     memcpy(ethernetHdr->ether_shost, 
@@ -409,7 +411,7 @@ void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet,
     ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
 
   	// set the ethernet hdr
-    ethernetHdr->ether_type = ethertype_ip;
+    ethernetHdr->ether_type = htons(ethertype_ip);
     memcpy(ethernetHdr->ether_dhost, 
     	ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
     memcpy(ethernetHdr->ether_shost, 
@@ -452,10 +454,10 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
     ipHdr->ip_hl = ipHdrR->ip_hl;		/* header length */
     ipHdr->ip_v = ipHdrR->ip_v;			/* version */
     ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
-    ipHdr->ip_len = sizeof(sr_ip_hdr_t)
-		+ sizeof(sr_icmp_hdr_t);		/* total length */
+    ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
+		+ sizeof(sr_icmp_hdr_t));		/* total length */
     ipHdr->ip_id = 0;					/* identification */
-    ipHdr->ip_off = IP_DF;				/* fragment offset field */
+    ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
     ipHdr->ip_ttl = INIT_TTL;			/* time to live */
     ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
     ipHdr->ip_sum = 0;					/* checksum */

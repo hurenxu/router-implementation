@@ -18,6 +18,19 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
+    
+    struct sr_arpreq * request = sr->cache.requests;
+    while(request)
+    {
+        struct sr_arpreq * temp_request = request->next;
+        handle_arpreq(sr, request);
+        request = temp_request;
+    }
+    /*
+    Since handle_arpreq as defined in the comments above could destroy your
+    current request, make sure to save the next pointer before calling
+    handle_arpreq when traversing through the ARP requests linked list.
+    */
 }
 
 /* You should not need to touch the rest of this code. */
@@ -245,3 +258,34 @@ void *sr_arpcache_timeout(void *sr_ptr) {
     return NULL;
 }
 
+void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req) 
+{
+    pthread_mutex_lock(&sr->cache.lock);
+    time_t now = time(NULL);
+    if(difftime(now, req->sent) > 1.0) 
+    {
+        if(req->times_sent >= 5) 
+        {
+            // send icmp host unreachable to source addr of all pkts waiting
+            // on this request
+            struct sr_packet * pac = req->packets;
+            while(pac) 
+            {
+                struct sr_if * interface = sr_get_interface(sr, 
+                    pac->iface);
+                sr_send_icmp_unreachable(sr, pac->buf, 
+                    interface);
+                pac = pac->next;
+            }
+            sr_arpreq_destroy(&(sr->cache), req);
+        }
+        else 
+        {
+            //send arp request
+            send_arp_request(sr, req);
+            req->sent = now;
+            req->times_sent++;
+        }
+    }
+    pthread_mutex_unlock(&sr->cache.lock);
+}

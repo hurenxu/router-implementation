@@ -44,5 +44,14 @@ void print_hdr_arp(uint8_t *buf);
 
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
-
+// additional methods
+uint8_t check_length_arp(unsigned int len);
+uint8_t check_length_ip(unsigned int len);
+uint8_t check_checksum_ip(sr_ip_hdr_t * ipHdr);
+uint8_t check_length_icmp(unsigned int len);
+uint8_t check_checksum_icmp(sr_icmp_hdr_t * icmpHdr);
+sr_ethernet_hdr_t * get_ethernet_hdr(uint8_t * packet);
+sr_arp_hdr_t * get_arp_hdr(uint8_t * packet);
+sr_ip_hdr_t * get_ip_hdr(uint8_t * packet);
+sr_icmp_hdr_t * get_icmp_hdr(uint8_t * packet);
 #endif /* -- SR_UTILS_H -- */

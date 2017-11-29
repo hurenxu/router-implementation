@@ -183,3 +183,82 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
+uint8_t check_length_arp(unsigned int len) 
+{
+  uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
+    sizeof(sr_arp_hdr_t)));
+  return result;
+}
+
+uint8_t check_length_ip(unsigned int len) 
+{
+  uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
+    sizeof(sr_ip_hdr_t)));
+  return result;
+}
+
+uint8_t check_checksum_ip(sr_ip_hdr_t * ipHdr) 
+{
+  uint16_t checksum = ipHdr->ip_sum;
+  ipHdr->ip_sum = 0;
+  uint16_t result = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+  if(result == checksum) 
+  {
+    ipHdr->ip_sum = checksum;
+    return 1;
+  }
+  else 
+  {
+    ipHdr->ip_sum = checksum;
+    return 0;
+  }
+}
+
+uint8_t check_length_icmp(unsigned int len)
+{
+  uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
+    sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t)));
+  return result;
+}
+
+uint8_t check_checksum_icmp(sr_icmp_hdr_t * icmpHdr) 
+{
+  uint16_t checksum = icmpHdr->icmp_sum;
+  icmpHdr->icmp_sum = 0;
+  uint16_t result = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+  if(result == checksum) 
+  {
+    icmpHdr->icmp_sum = checksum;
+    return 1;
+  }
+  else 
+  {
+    icmpHdr->icmp_sum = checksum;
+    return 0;
+  }
+}
+
+sr_ethernet_hdr_t * get_ethernet_hdr(uint8_t * packet) 
+{
+  sr_ethernet_hdr_t * hdr = (sr_ethernet_hdr_t *)packet;
+  return hdr;
+}
+
+sr_arp_hdr_t * get_arp_hdr(uint8_t * packet) 
+{
+  sr_arp_hdr_t * hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  return hdr;
+}
+
+sr_ip_hdr_t * get_ip_hdr(uint8_t * packet) 
+{
+  sr_ip_hdr_t * hdr = (sr_ip_hdr_t * )(packet + sizeof(sr_ethernet_hdr_t));
+  return hdr;
+}
+
+sr_icmp_hdr_t * get_icmp_hdr(uint8_t * packet) 
+{
+  sr_icmp_hdr_t * hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + 
+    sizeof(sr_ip_hdr_t));
+  return hdr;
+}

@@ -282,6 +282,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
         else 
         {
             //send arp request
+	    printf("send arp request\n");
             send_arp_request(sr, req);
             req->sent = now;
             req->times_sent++;

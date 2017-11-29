@@ -71,7 +71,7 @@ void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 void sr_handle_arp_reply(struct sr_instance * sr, sr_arp_hdr_t * arpHdr,
     struct sr_if * rec_router_interface);
 void sr_handle_arp_request(struct sr_instance * sr, sr_arp_hdr_t * arpHdr,
-    struct sr_if * rec_router_interface);
+    struct sr_if * rec_router_interface, sr_ethernet_hdr_t * ethernetHdrR);
 void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
     struct sr_if * rec_router_interface);
 void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet, 
@@ -80,6 +80,7 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
     unsigned int len, struct sr_if * rec_router_interface);
 void send_arp_request(struct sr_instance * sr, struct sr_arpreq * req);
 struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr);
+uint8_t sr_check_ip(struct sr_instance * sr, uint8_t* packet);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );

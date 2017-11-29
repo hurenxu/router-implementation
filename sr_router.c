@@ -288,6 +288,17 @@ void sr_handle_arp_reply(struct sr_instance * sr, sr_arp_hdr_t* arpHdr,
     // since the current packet is not desination, it is not NULL
     // this is the entry queue
     struct sr_packet * dest = request->packets;
+    sr_send_arp_reply(dest, sr, arpHdr, rec_router_interface); 
+    // drop the request from the queue since it is sent
+    sr_arpreq_destroy(&(sr->cache), request);
+  }
+  pthread_mutex_unlock(&(sr->cache.lock));
+}
+
+void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp_hdr_t* arpHdr,
+    struct sr_if * rec_router_interface) 
+{
+  pthread_mutex_lock(&(sr->cache.lock));
     // loop until find the desination (which should be null since does
     // not have next packet if reach the end)
     printf("function call arp reply\n");
@@ -310,9 +321,6 @@ void sr_handle_arp_reply(struct sr_instance * sr, sr_arp_hdr_t* arpHdr,
       // go to the next dest to see whether it is the end
       dest = dest->next;
     }
-    // drop the request from the queue since it is sent
-    sr_arpreq_destroy(&(sr->cache), request);
-  }
   pthread_mutex_unlock(&(sr->cache.lock));
 }
 
@@ -448,7 +456,7 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
     struct sr_if * rec_router_interface) 
 {
   // unreachable type and code
-  uint8_t icmp_type = 0x000B;
+  uint8_t icmp_type = 0x000b;
   uint8_t icmp_code = 0x0;
   // responds with icmp unreachable 
   // allocate space for new icmp packet
@@ -485,7 +493,7 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
 
   // set the ethernet hdr
-  ethernetHdr->ether_type = ethertype_ip;
+  ethernetHdr->ether_type = htons(ethertype_ip);
   memcpy(ethernetHdr->ether_dhost, 
       ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 

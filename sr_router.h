@@ -81,6 +81,8 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
 void send_arp_request(struct sr_instance * sr, struct sr_arpreq * req);
 struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr);
 uint8_t sr_check_ip(struct sr_instance * sr, uint8_t* packet);
+void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp_hdr_t* arpHdr,
+    struct sr_if * rec_router_interface);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );

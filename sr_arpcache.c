@@ -269,14 +269,15 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             // send icmp host unreachable to source addr of all pkts waiting
             // on this request
             struct sr_packet * pac = req->packets;
-            while(pac) 
+            /**while(pac) 
             {
                 struct sr_if * interface = sr_get_interface(sr, 
                     pac->iface);
-                sr_send_icmp_unreachable(sr, pac->buf, 
+                sr_send_icmp_host_unreachable(sr, pac->buf, 
                     interface);
                 pac = pac->next;
-            }
+            }*/
+            send_icmp_reverse(sr, pac);
             sr_arpreq_destroy(&(sr->cache), req);
         }
         else 
@@ -289,4 +290,20 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
         }
     }
     pthread_mutex_unlock(&sr->cache.lock);
+}
+
+void send_icmp_reverse(struct sr_instance * sr, struct sr_packet * pac)
+{
+  if(!pac) 
+  {
+    struct sr_if * interface = sr_get_interface(sr, 
+      pac->iface);
+    sr_send_icmp_host_unreachable(sr, pac->buf, 
+      interface);
+  }
+  else 
+  {
+    pac = pac->next;
+    send_icmp_reverse(sr, pac);
+  }
 }

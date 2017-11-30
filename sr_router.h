@@ -27,7 +27,7 @@
 #define DebugMAC(x) do{}while(0)
 #endif
 
-#define INIT_TTL 255
+#define INIT_TTL 64
 #define PACKET_DUMP_SIZE 1024
 
 /* forward declare */
@@ -74,6 +74,10 @@ void sr_handle_arp_request(struct sr_instance * sr, sr_arp_hdr_t * arpHdr,
     struct sr_if * rec_router_interface, sr_ethernet_hdr_t * ethernetHdrR);
 void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
     struct sr_if * rec_router_interface);
+void sr_send_icmp_host_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
+    struct sr_if * rec_router_interface);
+void sr_send_icmp_net_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
+    struct sr_if * rec_router_interface);
 void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet, 
     struct sr_if * rec_router_interface);
 void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet, 
@@ -83,6 +87,7 @@ struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr);
 uint8_t sr_check_ip(struct sr_instance * sr, uint8_t* packet);
 void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp_hdr_t* arpHdr,
     struct sr_if * rec_router_interface);
+//struct sr_packet* createReverePackets(struct sr_packet* dest);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );

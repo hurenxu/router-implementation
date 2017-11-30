@@ -79,6 +79,7 @@ struct sr_packet {
     unsigned int len;           /* Length of raw Ethernet frame */
     char *iface;                /* The outgoing interface */
     struct sr_packet *next;
+//    struct sr_packet *prev;
 };
 
 struct sr_arpentry {
@@ -147,5 +148,6 @@ int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
 void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req);
+void send_icmp_reverse(struct sr_instance * sr, struct sr_packet * pac);
 #endif
 

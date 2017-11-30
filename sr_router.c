@@ -154,7 +154,6 @@ void sr_handlepacket(struct sr_instance* sr,
 
       // check the ip address of the destination and the interface
       // first case if the ip packet is for the router, then do something
-      printf("printing the ip for checking replying\n");
       if(sr_check_ip(sr, packet)) 
       //if(rec_router_interface->ip == ipHdr->ip_dst) 
       {
@@ -162,7 +161,6 @@ void sr_handlepacket(struct sr_instance* sr,
 	// check ip_p to see which protocal it is sending
 	if(ipHdr->ip_p == ip_protocol_icmp) 
 	{
-	  printf("this is the place we are looking for and it is icmp\n");
 	  // if it is an icmp packet
 	  // generate ICMP echo reply
 	  // get the icmp packet
@@ -170,12 +168,10 @@ void sr_handlepacket(struct sr_instance* sr,
 	  // check the icmp (checksum and length)
 	  if(check_length_icmp(len) != (uint8_t)1) 
 	  {
-	    printf("not sending pack because the length\n");
 	    return;
 	  }
 	  if(check_checksum_icmp(icmpHdr) != (uint8_t)1) 
 	  {
-	    printf("not sending pack because the checksum\n");
 	    return;
 	  }
 	  // assume all the icmp is request and echo
@@ -183,17 +179,13 @@ void sr_handlepacket(struct sr_instance* sr,
   	  //uint8_t icmp_code = 0x0;
 	  if(icmpHdr->icmp_type == 8) 
 	  {
-	    printf("send icmp echo reply since this is the place that we are looking for\n");
 	    // send icmp echo reply TODO
 	    sr_send_icmp_reply(sr, packet, 
 		len, rec_router_interface);
 	  }
-	  printf("not sending pack because the icmp_type\n");
 	}
 	else 
 	{
-	  printf("this is the place we are looking for and it is tcp/udp\n");
-	  printf("unreacheable\n");
 	  // not doing anything with anything else 
 	  // TCP or UDP
 	  // send icmp port unreadable TODO
@@ -201,16 +193,13 @@ void sr_handlepacket(struct sr_instance* sr,
 	}
       }
 
-      printf("inside ip if ip are not the same\n");
       // second case if the ip packet is not for this network, do sth
       // check ip_ttl <= 1 ICMP time exceeded
       if(ipHdr->ip_ttl <= 1) 
       {
 	// do something about icmp time exceeded
-	printf("send icmp exceeded since the ttl <= 1 and it is still not the place \
-	    that we are looking for\n");
 	sr_send_icmp_exceeded(sr, packet, rec_router_interface);
-	return;
+	//return;
       }
       // reduce ttl and update checksum
       // ipHdr->ip_ttl--;
@@ -235,7 +224,6 @@ void sr_handlepacket(struct sr_instance* sr,
 	// check the entry
 	if(entry) 
 	{
-	  printf("find the lpm, and find the entry, and send it\n");
 	  // if the entyr is not null
 	  // modify the ethernet source and destination values
 	  memcpy(ethernetHdr->ether_shost, send_router_interface->addr, ETHER_ADDR_LEN);
@@ -246,7 +234,6 @@ void sr_handlepacket(struct sr_instance* sr,
 	}
 	else 
 	{
-	  printf("find the lpm, but do not find the entry, so send arp request\n");
 	  // if the entry is null
 	  // add ARP request queue
 	  struct sr_arpreq * reqQueue = sr_arpcache_queuereq(&(sr->cache),
@@ -257,8 +244,7 @@ void sr_handlepacket(struct sr_instance* sr,
       }
       else 
       {
-	printf("not find the lpm, therefore not reachable\n");
-	sr_send_icmp_unreachable(sr, packet, rec_router_interface);
+	sr_send_icmp_net_unreachable(sr, packet, rec_router_interface);
       }
       break;
     default:
@@ -301,7 +287,6 @@ void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp
   pthread_mutex_lock(&(sr->cache.lock));
     // loop until find the desination (which should be null since does
     // not have next packet if reach the end)
-    printf("function call arp reply\n");
     while(dest) 
     {
       // do the forwarding here
@@ -320,6 +305,7 @@ void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp
       sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
       // go to the next dest to see whether it is the end
       dest = dest->next;
+      //dest =dest->prev;
     }
   pthread_mutex_unlock(&(sr->cache.lock));
 }
@@ -417,37 +403,156 @@ void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet,
   sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
   sr_icmp_hdr_t * icmpHdr = get_icmp_hdr(packet);
 
+  // since we are sending back with the reply, so send back to the
+  // source interface
+  struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
+      ipHdrR->ip_src);
+
+  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
   icmpHdr->icmp_type = icmp_type;
   icmpHdr->icmp_code = icmp_code;
   icmpHdr->icmp_sum = 0;
   icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
-  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
 
   ipHdr->ip_hl = ipHdrR->ip_hl;		/* header length */
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
-  ipHdr->ip_len = sizeof(sr_ip_hdr_t)
-    + sizeof(sr_icmp_hdr_t);		/* total length */
+  ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
+    + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
-  ipHdr->ip_off = IP_DF;				/* fragment offset field */
+  ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
-  ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
-  ipHdr->ip_sum = 0;					/* checksum */
-  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 
   // set the ethernet hdr
-  ethernetHdr->ether_type = htons(ethertype_ip);
+  //ethernetHdr->ether_type = htons(ethertype_ip);
+  ethernetHdr->ether_type = ethernetHdrR->ether_type;
   memcpy(ethernetHdr->ether_dhost, 
       ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 
-      rec_router_interface->addr, ETHER_ADDR_LEN); 
+      send_router_interface->addr, ETHER_ADDR_LEN); 
+
+  // set the ethernet hdr
+  sr_send_packet(sr, packet, len, send_router_interface->name);
+}
+
+void sr_send_icmp_net_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
+    struct sr_if * rec_router_interface) 
+{
+  // unreachable type and code
+  uint8_t icmp_type = 0x0003;
+  uint8_t icmp_code = 0x0;
+  // responds with icmp unreachable 
+  // allocate space for new icmp packet
+  unsigned int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    + sizeof(sr_icmp_hdr_t);
+  uint8_t * packet = (uint8_t *) calloc(1, len);
+
+  // get the header of ethernet and ip and icmp
+  sr_ethernet_hdr_t * ethernetHdrR = get_ethernet_hdr(whole_packet);
+  sr_ip_hdr_t * ipHdrR = get_ip_hdr(whole_packet);
+
+  sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+  sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+  sr_icmp_hdr_t * icmpHdr = get_icmp_hdr(packet);
 
   // since we are sending back with the reply, so send back to the
   // source interface
   struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
       ipHdrR->ip_src);
+
+  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
+  icmpHdr->icmp_type = icmp_type;
+  icmpHdr->icmp_code = icmp_code;
+  icmpHdr->icmp_sum = 0;
+  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+
+  ipHdr->ip_hl = ipHdrR->ip_hl;		/* header length */
+  ipHdr->ip_v = ipHdrR->ip_v;			/* version */
+  ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
+  ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
+    + sizeof(sr_icmp_hdr_t));		/* total length */
+  ipHdr->ip_id = 0;					/* identification */
+  ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
+  ipHdr->ip_ttl = INIT_TTL;			/* time to live */
+  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
+  ipHdr->ip_src = rec_router_interface->ip;
+  ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+
+  // set the ethernet hdr
+  //ethernetHdr->ether_type = htons(ethertype_ip);
+  ethernetHdr->ether_type = ethernetHdrR->ether_type;
+  memcpy(ethernetHdr->ether_dhost, 
+      ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
+  memcpy(ethernetHdr->ether_shost, 
+      send_router_interface->addr, ETHER_ADDR_LEN); 
+
+  // set the ethernet hdr
+  sr_send_packet(sr, packet, len, send_router_interface->name);
+}
+
+void sr_send_icmp_host_unreachable(struct sr_instance *sr, uint8_t * whole_packet, 
+    struct sr_if * rec_router_interface) 
+{
+  // unreachable type and code
+  uint8_t icmp_type = 0x0003;
+  uint8_t icmp_code = 0x0001;
+  // responds with icmp unreachable 
+  // allocate space for new icmp packet
+  unsigned int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)
+    + sizeof(sr_icmp_hdr_t);
+  uint8_t * packet = (uint8_t *) calloc(1, len);
+
+  // get the header of ethernet and ip and icmp
+  sr_ethernet_hdr_t * ethernetHdrR = get_ethernet_hdr(whole_packet);
+  sr_ip_hdr_t * ipHdrR = get_ip_hdr(whole_packet);
+
+  sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+  sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+  sr_icmp_hdr_t * icmpHdr = get_icmp_hdr(packet);
+
+  // since we are sending back with the reply, so send back to the
+  // source interface
+  struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
+      ipHdrR->ip_src);
+
+  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
+  icmpHdr->icmp_type = icmp_type;
+  icmpHdr->icmp_code = icmp_code;
+  icmpHdr->icmp_sum = 0;
+  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+
+  ipHdr->ip_hl = ipHdrR->ip_hl;		/* header length */
+  ipHdr->ip_v = ipHdrR->ip_v;			/* version */
+  ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
+  ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
+    + sizeof(sr_icmp_hdr_t));		/* total length */
+  ipHdr->ip_id = 0;					/* identification */
+  ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
+  ipHdr->ip_ttl = INIT_TTL;			/* time to live */
+  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
+  ipHdr->ip_src = rec_router_interface->ip;
+  ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+
+  // set the ethernet hdr
+  //ethernetHdr->ether_type = htons(ethertype_ip);
+  ethernetHdr->ether_type = ethernetHdrR->ether_type;
+  memcpy(ethernetHdr->ether_dhost, 
+      ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
+  memcpy(ethernetHdr->ether_shost, 
+      send_router_interface->addr, ETHER_ADDR_LEN); 
+
   // set the ethernet hdr
   sr_send_packet(sr, packet, len, send_router_interface->name);
 }
@@ -472,37 +577,41 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
   sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
   sr_icmp_hdr_t * icmpHdr = get_icmp_hdr(packet);
 
-  icmpHdr->icmp_type = icmp_type;
-  icmpHdr->icmp_code = icmp_code;
-  icmpHdr->icmp_sum = 0;
-  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
-  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
+  // since we are sending back with the reply, so send back to the
+  // source interface
+  struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
+      ipHdrR->ip_src);
 
   ipHdr->ip_hl = ipHdrR->ip_hl;		/* header length */
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
   ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
-      + sizeof(sr_icmp_hdr_t));		/* total length */
+    + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
+  //ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
+
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
   ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
-  ipHdr->ip_sum = 0;					/* checksum */
-  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+  //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 
+  memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
+  icmpHdr->icmp_type = icmp_type;
+  icmpHdr->icmp_code = icmp_code;
+  icmpHdr->icmp_sum = 0;
+  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+  
   // set the ethernet hdr
-  ethernetHdr->ether_type = htons(ethertype_ip);
+  //ethernetHdr->ether_type = htons(ethertype_ip);
+  ethernetHdr->ether_type = ethernetHdrR->ether_type;
   memcpy(ethernetHdr->ether_dhost, 
       ethernetHdrR->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 
-      rec_router_interface->addr, ETHER_ADDR_LEN); 
-
-  // since we are sending back with the reply, so send back to the
-  // source interface
-  struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
-      ipHdrR->ip_src);
+      send_router_interface->addr, ETHER_ADDR_LEN); 
   // set the ethernet hdr
   sr_send_packet(sr, packet, len, send_router_interface->name);
 }
@@ -511,8 +620,8 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
     unsigned int len, struct sr_if * rec_router_interface) 
 {
   // unreachable type and code
-  uint8_t icmp_type = 0x0;
-  uint8_t icmp_code = 0x0;
+  uint8_t icmp_type = 0x00;
+  uint8_t icmp_code = 0x00;
   // responds with icmp reply 
   // get the header of ethernet and ip and icmp
   sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
@@ -524,11 +633,11 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
   icmpHdr->icmp_sum = 0;
   icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
 
-  ipHdr->ip_sum = 0;					/* checksum */
-  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
   uint32_t prev_sip = ipHdr->ip_src;
   ipHdr->ip_src = ipHdr->ip_dst;
   ipHdr->ip_dst = prev_sip;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 
   // since we are sending back with the reply, so send back to the
   // source interface
@@ -564,8 +673,13 @@ struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr)
     }
     rt_walker = rt_walker->next;
   }
-  struct sr_if* if_walker = sr_get_interface(sr, rt_lpm_walker->interface);
-  return if_walker;
+  if(!rt_lpm_walker) {
+    return 0;
+  }
+  else {
+    struct sr_if* if_walker = sr_get_interface(sr, rt_lpm_walker->interface);
+    return if_walker;
+  }
 } 
 
 uint8_t sr_check_ip(struct sr_instance * sr, uint8_t* packet) 
@@ -578,11 +692,9 @@ uint8_t sr_check_ip(struct sr_instance * sr, uint8_t* packet)
     if(interfaces->ip == ipHdr->ip_dst) 
     {
       result = 1;
-      printf("findinggggggggggggggggggggggggggggggggggggg\n");
       return result;
     }
     interfaces = interfaces->next;
   }
-  printf("nooooooooooooooooooooooo\n");
   return result;
 }

@@ -101,12 +101,12 @@ void sr_handlepacket(struct sr_instance* sr,
       // check the arp op code to see whether reply or request
       if(ntohs(arpHdr->ar_op) == arp_op_request) 
       {
-	printf("trying to send arprequest\n");
+        printf("in arp request\n");
 	sr_handle_arp_request(sr, arpHdr, rec_router_interface, ethernetHdr);
       }
       else if(ntohs(arpHdr->ar_op) == arp_op_reply) 
       {
-	printf("trying to send arpreply\n");
+        printf("in arp reply\n");
 	sr_handle_arp_reply(sr, arpHdr, rec_router_interface);
       }
       else 
@@ -287,6 +287,7 @@ void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp
   pthread_mutex_lock(&(sr->cache.lock));
     // loop until find the desination (which should be null since does
     // not have next packet if reach the end)
+    /**
     while(dest) 
     {
       // do the forwarding here
@@ -305,6 +306,49 @@ void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp
       sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
       // go to the next dest to see whether it is the end
       dest = dest->next;
+      //dest =dest->prev;
+    }
+    */
+    if(!(dest->next)) 
+    {
+      // do the forwarding here
+      uint8_t * packet = dest->buf;
+      // get the header of ethernet and ip
+      sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+      sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+      // make the dest mac to be the destination source 
+      // (usually not change)
+      memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
+      memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
+	  ETHER_ADDR_LEN);
+      // compute checksum
+      ipHdr->ip_sum = 0;
+      ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+      sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
+      // go to the next dest to see whether it is the end
+      //dest = dest->next;
+      //dest =dest->prev;
+    }
+    else 
+    {
+      //dest = dest->next;
+      sr_send_arp_reply(dest->next, sr, arpHdr, rec_router_interface);
+      // do the forwarding here
+      uint8_t * packet = dest->buf;
+      // get the header of ethernet and ip
+      sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+      sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+      // make the dest mac to be the destination source 
+      // (usually not change)
+      memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
+      memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
+	  ETHER_ADDR_LEN);
+      // compute checksum
+      ipHdr->ip_sum = 0;
+      ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+      sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
+      // go to the next dest to see whether it is the end
+      //dest = dest->next;
       //dest =dest->prev;
     }
   pthread_mutex_unlock(&(sr->cache.lock));

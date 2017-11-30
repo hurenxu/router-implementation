@@ -283,7 +283,6 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
         else 
         {
             //send arp request
-	    printf("send arp request\n");
             send_arp_request(sr, req);
             req->sent = now;
             req->times_sent++;
@@ -294,7 +293,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
 
 void send_icmp_reverse(struct sr_instance * sr, struct sr_packet * pac)
 {
-  if(!pac) 
+  if(!(pac->next)) 
   {
     struct sr_if * interface = sr_get_interface(sr, 
       pac->iface);
@@ -303,7 +302,10 @@ void send_icmp_reverse(struct sr_instance * sr, struct sr_packet * pac)
   }
   else 
   {
-    pac = pac->next;
-    send_icmp_reverse(sr, pac);
+    send_icmp_reverse(sr, pac->next);
+    struct sr_if * interface = sr_get_interface(sr, 
+      pac->iface);
+    sr_send_icmp_host_unreachable(sr, pac->buf, 
+      interface);
   }
 }

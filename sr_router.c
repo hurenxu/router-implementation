@@ -647,17 +647,6 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
   sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
   sr_icmp_hdr_t * icmpHdr = get_icmp_hdr(packet);
 
-  icmpHdr->icmp_type = icmp_type;
-  icmpHdr->icmp_code = icmp_code;
-  icmpHdr->icmp_sum = 0;
-  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
-
-  uint32_t prev_sip = ipHdr->ip_src;
-  ipHdr->ip_src = ipHdr->ip_dst;
-  ipHdr->ip_dst = prev_sip;	/* source and dest address */
-  ipHdr->ip_sum = 0;					/* checksum */
-  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
-
   // since we are sending back with the reply, so send back to the
   // source interface
   struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
@@ -667,7 +656,19 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
       ethernetHdr->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 
       send_router_interface->addr, ETHER_ADDR_LEN); 
-  // set the ethernet hdr
+
+  uint32_t prev_sip = ipHdr->ip_src;
+  ipHdr->ip_src = ipHdr->ip_dst;
+  ipHdr->ip_dst = prev_sip;	/* source and dest address */
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+
+  icmpHdr->icmp_type = icmp_type;
+  icmpHdr->icmp_code = icmp_code;
+  icmpHdr->icmp_sum = 0;
+  icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+
+ // set the ethernet hdr
   sr_send_packet(sr, packet, len, send_router_interface->name);
 }
 

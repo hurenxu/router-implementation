@@ -101,12 +101,10 @@ void sr_handlepacket(struct sr_instance* sr,
       // check the arp op code to see whether reply or request
       if(ntohs(arpHdr->ar_op) == arp_op_request) 
       {
-        printf("in arp request\n");
 	sr_handle_arp_request(sr, arpHdr, rec_router_interface, ethernetHdr);
       }
       else if(ntohs(arpHdr->ar_op) == arp_op_reply) 
       {
-        printf("in arp reply\n");
 	sr_handle_arp_reply(sr, arpHdr, rec_router_interface);
       }
       else 
@@ -190,6 +188,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	  // TCP or UDP
 	  // send icmp port unreadable TODO
 	  sr_send_icmp_unreachable(sr, packet, rec_router_interface);
+	  return;
 	}
       }
 
@@ -199,7 +198,7 @@ void sr_handlepacket(struct sr_instance* sr,
       {
 	// do something about icmp time exceeded
 	sr_send_icmp_exceeded(sr, packet, rec_router_interface);
-	//return;
+	return;
       }
       // reduce ttl and update checksum
       // ipHdr->ip_ttl--;
@@ -245,6 +244,7 @@ void sr_handlepacket(struct sr_instance* sr,
       else 
       {
 	sr_send_icmp_net_unreachable(sr, packet, rec_router_interface);
+	return;
       }
       break;
     default:
@@ -466,8 +466,8 @@ void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet,
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
-  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
-  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
+  ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
   ipHdr->ip_sum = 0;					/* checksum */
@@ -524,8 +524,8 @@ void sr_send_icmp_net_unreachable(struct sr_instance *sr, uint8_t * whole_packet
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
-  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
-  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
+  ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
   ipHdr->ip_sum = 0;					/* checksum */
@@ -582,8 +582,8 @@ void sr_send_icmp_host_unreachable(struct sr_instance *sr, uint8_t * whole_packe
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
-  //ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
-  ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
+  ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
+  //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
   ipHdr->ip_sum = 0;					/* checksum */
@@ -706,8 +706,8 @@ struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr)
   while(rt_walker)
   {
     if((!rt_lpm_walker) || (rt_lpm_walker->mask.s_addr < rt_walker->mask.s_addr)) {
-      uint32_t dst =  dstAddr & rt_walker->mask.s_addr;
-      uint32_t dstNetwork = rt_walker->dest.s_addr & rt_walker->mask.s_addr;
+      uint32_t dst = rt_walker->mask.s_addr & dstAddr;
+      uint32_t dstNetwork = rt_walker->mask.s_addr & rt_walker->dest.s_addr;
       if(dst == dstNetwork)
       {
 	//if_walker = sr_get_interface(sr, rt_walker->interface); 

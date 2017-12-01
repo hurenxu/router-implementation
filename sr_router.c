@@ -168,13 +168,13 @@ void sr_handlepacket(struct sr_instance* sr,
 	  {
 	    return;
 	  }
+          /**
 	  if(check_checksum_icmp(icmpHdr) != (uint8_t)1) 
 	  {
 	    return;
 	  }
+	  */
 	  // assume all the icmp is request and echo
-	  //uint8_t icmp_type = 0x0008;
-	  //uint8_t icmp_code = 0x0;
 	  if(icmpHdr->icmp_type == 8) 
 	  {
 	    // send icmp echo reply TODO
@@ -221,6 +221,8 @@ void sr_handlepacket(struct sr_instance* sr,
 	  // modify the ethernet source and destination values
 	  memcpy(ethernetHdr->ether_shost, send_router_interface->addr, ETHER_ADDR_LEN);
 	  memcpy(ethernetHdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+	  ipHdr->ip_sum = 0;					/* checksum */
+	  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 	  sr_send_packet(sr, packet, len, send_router_interface->name);
 	  free(entry);
 	  return;
@@ -605,14 +607,14 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
   //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
   ipHdr->ip_src = rec_router_interface->ip;
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
-  ipHdr->ip_sum = 0;					/* checksum */
-  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 
   memcpy(icmpHdr->data, ipHdrR, ICMP_DATA_SIZE);
   icmpHdr->icmp_type = icmp_type;
   icmpHdr->icmp_code = icmp_code;
   icmpHdr->icmp_sum = 0;
   icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
+  ipHdr->ip_sum = 0;					/* checksum */
+  ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
 
   // set the ethernet hdr
   //ethernetHdr->ether_type = htons(ethertype_ip);
@@ -652,8 +654,7 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
   // source interface
   struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
       ipHdr->ip_src);
-
-  // set the ethernet hdr
+ // set the ethernet hdr
   memcpy(ethernetHdr->ether_dhost, 
       ethernetHdr->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 
@@ -675,7 +676,6 @@ struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr)
       uint32_t dstNetwork = rt_walker->mask.s_addr & rt_walker->dest.s_addr;
       if(dst == dstNetwork)
       {
-	//if_walker = sr_get_interface(sr, rt_walker->interface); 
 	//return if_walker;
 	rt_lpm_walker = rt_walker; 
       }
@@ -683,6 +683,22 @@ struct sr_if* sr_ip_to_inferface(struct sr_instance* sr, uint32_t dstAddr)
     rt_walker = rt_walker->next;
   }
   if(!rt_lpm_walker) {
+    // adding here for check ethernet
+    struct sr_if* if_walker = 0;
+    if(sr->if_list == 0)
+    {
+        printf(" Interface list empty \n");
+        return 0;
+    }
+    if_walker = sr->if_list;
+    while(if_walker->next)
+    {
+        if(dstAddr == if_walker->ip) 
+	{
+          return if_walker;
+	}
+        if_walker = if_walker->next; 
+    }
     return 0;
   }
   else {

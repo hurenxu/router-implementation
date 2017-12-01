@@ -15,7 +15,7 @@ uint16_t cksum (const void *_data, int len) {
     sum += data[0] << 8;
   while (sum > 0xffff)
     sum = (sum >> 16) + (sum & 0xffff);
-  sum = htons (~sum);
+  sum = htons (~sum);  
   return sum ? sum : 0xffff;
 }
 

@@ -187,6 +187,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	  // not doing anything with anything else 
 	  // TCP or UDP
 	  // send icmp port unreadable TODO
+	  // adding here for check ethernet
 	  sr_send_icmp_unreachable(sr, packet, rec_router_interface);
 	  return;
 	}
@@ -435,7 +436,13 @@ void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet,
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
   ipHdr->ip_p = ip_protocol_icmp;		/* protocol */
   //ipHdr->ip_p = ipHdrR->ip_p;		/* protocol */
-  ipHdr->ip_src = rec_router_interface->ip;
+  if(rec_router_interface->ip != send_router_interface->ip) {
+	ipHdr->ip_src = rec_router_interface->ip;
+  }
+  else 
+  {
+	ipHdr->ip_src = ipHdrR->ip_dst;
+  }
   ipHdr->ip_dst = ipHdrR->ip_src;	/* source and dest address */
   ipHdr->ip_sum = 0;					/* checksum */
   ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));

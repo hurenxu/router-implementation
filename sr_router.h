@@ -21,7 +21,7 @@
 #define Debug(x, args...) printf(x, ## args)
 #define DebugMAC(x) \
   do { int ivyl; for(ivyl=0; ivyl<5; ivyl++) printf("%02x:", \
-  (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)
+      (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)
 #else
 #define Debug(x, args...) do{}while(0)
 #define DebugMAC(x) do{}while(0)
@@ -43,17 +43,17 @@ struct sr_rt;
 
 struct sr_instance
 {
-    int  sockfd;   /* socket to server */
-    char user[32]; /* user name */
-    char host[32]; /* host name */ 
-    char template[30]; /* template name if any */
-    unsigned short topo_id;
-    struct sockaddr_in sr_addr; /* address to server */
-    struct sr_if* if_list; /* list of interfaces */
-    struct sr_rt* routing_table; /* routing table */
-    struct sr_arpcache cache;   /* ARP cache */
-    pthread_attr_t attr;
-    FILE* logfile;
+  int  sockfd;   /* socket to server */
+  char user[32]; /* user name */
+  char host[32]; /* host name */ 
+  char template[30]; /* template name if any */
+  unsigned short topo_id;
+  struct sockaddr_in sr_addr; /* address to server */
+  struct sr_if* if_list; /* list of interfaces */
+  struct sr_rt* routing_table; /* routing table */
+  struct sr_arpcache cache;   /* ARP cache */
+  pthread_attr_t attr;
+  FILE* logfile;
 };
 
 /* -- sr_main.c -- */

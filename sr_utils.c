@@ -166,9 +166,9 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     if (ip_proto == ip_protocol_icmp) { /* ICMP */
       minlength += 4;
       if (length < minlength)
-        fprintf(stderr, "Failed to print ICMP header, insufficient length\n");
+	fprintf(stderr, "Failed to print ICMP header, insufficient length\n");
       else
-        print_hdr_icmp(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+	print_hdr_icmp(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     }
   }
   else if (ethtype == ethertype_arp) { /* ARP */
@@ -186,14 +186,14 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
 uint8_t check_length_arp(unsigned int len) 
 {
   uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
-    sizeof(sr_arp_hdr_t)));
+	sizeof(sr_arp_hdr_t)));
   return result;
 }
 
 uint8_t check_length_ip(unsigned int len) 
 {
   uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
-    sizeof(sr_ip_hdr_t)));
+	sizeof(sr_ip_hdr_t)));
   return result;
 }
 
@@ -217,7 +217,7 @@ uint8_t check_checksum_ip(sr_ip_hdr_t * ipHdr)
 uint8_t check_length_icmp(unsigned int len)
 {
   uint8_t result = (len >= (sizeof(sr_ethernet_hdr_t) + 
-    sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t)));
+	sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t)));
   return result;
 }
 
@@ -259,6 +259,6 @@ sr_ip_hdr_t * get_ip_hdr(uint8_t * packet)
 sr_icmp_hdr_t * get_icmp_hdr(uint8_t * packet) 
 {
   sr_icmp_hdr_t * hdr = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + 
-    sizeof(sr_ip_hdr_t));
+      sizeof(sr_ip_hdr_t));
   return hdr;
 }

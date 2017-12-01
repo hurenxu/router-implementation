@@ -153,7 +153,7 @@ void sr_handlepacket(struct sr_instance* sr,
       // check the ip address of the destination and the interface
       // first case if the ip packet is for the router, then do something
       if(sr_check_ip(sr, packet)) 
-      //if(rec_router_interface->ip == ipHdr->ip_dst) 
+	//if(rec_router_interface->ip == ipHdr->ip_dst) 
       {
 	// do the handling ip here TODO
 	// check ip_p to see which protocal it is sending
@@ -173,8 +173,8 @@ void sr_handlepacket(struct sr_instance* sr,
 	    return;
 	  }
 	  // assume all the icmp is request and echo
-       	  //uint8_t icmp_type = 0x0008;
-  	  //uint8_t icmp_code = 0x0;
+	  //uint8_t icmp_type = 0x0008;
+	  //uint8_t icmp_code = 0x0;
 	  if(icmpHdr->icmp_type == 8) 
 	  {
 	    // send icmp echo reply TODO
@@ -200,14 +200,8 @@ void sr_handlepacket(struct sr_instance* sr,
 	sr_send_icmp_exceeded(sr, packet, rec_router_interface);
 	return;
       }
-      // reduce ttl and update checksum
-      // ipHdr->ip_ttl--;
       // do something about the next hop address and forward the packet
       // to next hop (TODO)  	
-      // since we are sending back with the reply, so send back to the
-      // source interface
-      //struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
-      //  ipHdr->ip_src);
       struct sr_if* send_router_interface = sr_ip_to_inferface(sr, 
 	  ipHdr->ip_dst);
       // find the lpm entry (matching interface)
@@ -285,72 +279,43 @@ void sr_send_arp_reply(struct sr_packet * dest,  struct sr_instance * sr, sr_arp
     struct sr_if * rec_router_interface) 
 {
   pthread_mutex_lock(&(sr->cache.lock));
-    // loop until find the desination (which should be null since does
-    // not have next packet if reach the end)
-    /**
-    while(dest) 
-    {
-      // do the forwarding here
-      uint8_t * packet = dest->buf;
-      // get the header of ethernet and ip
-      sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
-      sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
-      // compute checksum
-      ipHdr->ip_sum = 0;
-      ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
-      // make the dest mac to be the destination source 
-      // (usually not change)
-      memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
-      memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
-	  ETHER_ADDR_LEN);
-      sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
-      // go to the next dest to see whether it is the end
-      dest = dest->next;
-      //dest =dest->prev;
-    }
-    */
-    if(!(dest->next)) 
-    {
-      // do the forwarding here
-      uint8_t * packet = dest->buf;
-      // get the header of ethernet and ip
-      sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
-      sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
-      // make the dest mac to be the destination source 
-      // (usually not change)
-      memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
-      memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
-	  ETHER_ADDR_LEN);
-      // compute checksum
-      ipHdr->ip_sum = 0;
-      ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
-      sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
-      // go to the next dest to see whether it is the end
-      //dest = dest->next;
-      //dest =dest->prev;
-    }
-    else 
-    {
-      //dest = dest->next;
-      sr_send_arp_reply(dest->next, sr, arpHdr, rec_router_interface);
-      // do the forwarding here
-      uint8_t * packet = dest->buf;
-      // get the header of ethernet and ip
-      sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
-      sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
-      // make the dest mac to be the destination source 
-      // (usually not change)
-      memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
-      memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
-	  ETHER_ADDR_LEN);
-      // compute checksum
-      ipHdr->ip_sum = 0;
-      ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
-      sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
-      // go to the next dest to see whether it is the end
-      //dest = dest->next;
-      //dest =dest->prev;
-    }
+  if(!(dest->next)) 
+  {
+    // do the forwarding here
+    uint8_t * packet = dest->buf;
+    // get the header of ethernet and ip
+    sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+    sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+    // make the dest mac to be the destination source 
+    // (usually not change)
+    memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
+    memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
+	ETHER_ADDR_LEN);
+    // compute checksum
+    ipHdr->ip_sum = 0;
+    ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+    sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
+    // go to the next dest to see whether it is the end
+  }
+  else 
+  {
+    sr_send_arp_reply(dest->next, sr, arpHdr, rec_router_interface);
+    // do the forwarding here
+    uint8_t * packet = dest->buf;
+    // get the header of ethernet and ip
+    sr_ethernet_hdr_t * ethernetHdr = get_ethernet_hdr(packet);
+    sr_ip_hdr_t * ipHdr = get_ip_hdr(packet);
+    // make the dest mac to be the destination source 
+    // (usually not change)
+    memcpy(ethernetHdr->ether_dhost, arpHdr->ar_sha, ETHER_ADDR_LEN);
+    memcpy(ethernetHdr->ether_shost, rec_router_interface->addr, 
+	ETHER_ADDR_LEN);
+    // compute checksum
+    ipHdr->ip_sum = 0;
+    ipHdr->ip_sum = cksum(ipHdr, sizeof(sr_ip_hdr_t));
+    sr_send_packet(sr, packet, dest->len, rec_router_interface->name);
+    // go to the next dest to see whether it is the end
+  }
   pthread_mutex_unlock(&(sr->cache.lock));
 }
 
@@ -462,7 +427,7 @@ void sr_send_icmp_unreachable(struct sr_instance *sr, uint8_t * whole_packet,
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
   ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
-    + sizeof(sr_icmp_hdr_t));		/* total length */
+      + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
@@ -520,7 +485,7 @@ void sr_send_icmp_net_unreachable(struct sr_instance *sr, uint8_t * whole_packet
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
   ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
-    + sizeof(sr_icmp_hdr_t));		/* total length */
+      + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
@@ -578,7 +543,7 @@ void sr_send_icmp_host_unreachable(struct sr_instance *sr, uint8_t * whole_packe
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
   ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
-    + sizeof(sr_icmp_hdr_t));		/* total length */
+      + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_ttl = INIT_TTL;			/* time to live */
@@ -630,7 +595,7 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
   ipHdr->ip_v = ipHdrR->ip_v;			/* version */
   ipHdr->ip_tos = ipHdrR->ip_tos;		/* type of service */
   ipHdr->ip_len = htons(sizeof(sr_ip_hdr_t)
-    + sizeof(sr_icmp_hdr_t));		/* total length */
+      + sizeof(sr_icmp_hdr_t));		/* total length */
   ipHdr->ip_id = 0;					/* identification */
   //ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
   ipHdr->ip_off = htons(IP_DF);				/* fragment offset field */
@@ -648,7 +613,7 @@ void sr_send_icmp_exceeded(struct sr_instance *sr, uint8_t * whole_packet,
   icmpHdr->icmp_code = icmp_code;
   icmpHdr->icmp_sum = 0;
   icmpHdr->icmp_sum = cksum(icmpHdr, sizeof(sr_icmp_hdr_t));
-  
+
   // set the ethernet hdr
   //ethernetHdr->ether_type = htons(ethertype_ip);
   ethernetHdr->ether_type = ethernetHdrR->ether_type;

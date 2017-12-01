@@ -180,6 +180,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	    // send icmp echo reply TODO
 	    sr_send_icmp_reply(sr, packet, 
 		len, rec_router_interface);
+            return;
 	  }
 	}
 	else 
@@ -666,7 +667,6 @@ void sr_send_icmp_reply(struct sr_instance *sr, uint8_t * packet,
       ethernetHdr->ether_shost, ETHER_ADDR_LEN); 
   memcpy(ethernetHdr->ether_shost, 
       send_router_interface->addr, ETHER_ADDR_LEN); 
-
   // set the ethernet hdr
   sr_send_packet(sr, packet, len, send_router_interface->name);
 }
